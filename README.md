@@ -1,4 +1,4 @@
-# AI Research Notes — Academic Blog
+# Research Notes — Academic Blog
 
 A personal blog for AI research notes, presented in an academic paper style.
 
@@ -19,7 +19,7 @@ Create a new `.md` file under `src/content/papers/`:
 ---
 title: 'Paper Title'
 authors: ['Ömer Faruk Aral']
-affiliation: 'Independent Researcher'
+affiliation: 'Researcher'
 abstract: 'Abstract text goes here...'
 keywords: ['keyword', 'another keyword']
 date: 2026-08-10

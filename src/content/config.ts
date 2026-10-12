@@ -5,7 +5,7 @@ const papers = defineCollection({
   schema: z.object({
     title: z.string(),
     authors: z.array(z.string()).default(['Ömer Faruk Aral']),
-    affiliation: z.string().default('Independent Researcher'),
+    affiliation: z.string().default('Researcher'),
     abstract: z.string(),
     keywords: z.array(z.string()).default([]),
     date: z.date(),
