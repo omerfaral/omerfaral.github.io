@@ -1,0 +1,119 @@
+---
+interface Props {
+  letter: string;
+}
+
+const { letter } = Astro.props;
+const safeLetter = letter.trim().slice(0, 1).toUpperCase();
+---
+
+<span class="svg-dropcap" aria-hidden="true">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <!-- Outer scalloped frame -->
+    <path
+      d="M12 12
+         L20 12 Q25 8 30 12 L40 12 Q45 8 50 12 L60 12 Q65 8 70 12 L80 12 Q85 8 88 12
+         L88 20 Q92 25 88 30 L88 40 Q92 45 88 50 L88 60 Q92 65 88 70 L88 80 Q92 85 88 88
+         L80 88 Q75 92 70 88 L60 88 Q55 92 50 88 L40 88 Q35 92 30 88 L20 88 Q15 92 12 88
+         L12 80 Q8 75 12 70 L12 60 Q8 55 12 50 L12 40 Q8 35 12 30 L12 20 Q8 15 12 12 Z"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+    />
+
+    <!-- Inner scalloped frame -->
+    <path
+      d="M18 18
+         L24 18 Q27 15 30 18 L36 18 Q39 15 42 18 L48 18 Q51 15 54 18 L60 18 Q63 15 66 18 L72 18 Q75 15 78 18
+         L78 24 Q81 27 78 30 L78 36 Q81 39 78 42 L78 48 Q81 51 78 54 L78 60 Q81 63 78 66 L78 72 Q81 75 78 78
+         L72 78 Q69 81 66 78 L60 78 Q57 81 54 78 L48 78 Q45 81 42 78 L36 78 Q33 81 30 78 L24 78 Q21 81 18 78
+         L18 72 Q15 69 18 66 L18 60 Q15 57 18 54 L18 48 Q15 45 18 42 L18 36 Q15 33 18 30 L18 24 Q15 21 18 18 Z"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1"
+    />
+
+    <!-- Bead molding between frames -->
+    <circle cx="25" cy="10" r="1.2" fill="currentColor" />
+    <circle cx="35" cy="10" r="1.2" fill="currentColor" />
+    <circle cx="45" cy="10" r="1.2" fill="currentColor" />
+    <circle cx="55" cy="10" r="1.2" fill="currentColor" />
+    <circle cx="65" cy="10" r="1.2" fill="currentColor" />
+    <circle cx="75" cy="10" r="1.2" fill="currentColor" />
+    <circle cx="25" cy="90" r="1.2" fill="currentColor" />
+    <circle cx="35" cy="90" r="1.2" fill="currentColor" />
+    <circle cx="45" cy="90" r="1.2" fill="currentColor" />
+    <circle cx="55" cy="90" r="1.2" fill="currentColor" />
+    <circle cx="65" cy="90" r="1.2" fill="currentColor" />
+    <circle cx="75" cy="90" r="1.2" fill="currentColor" />
+    <circle cx="10" cy="25" r="1.2" fill="currentColor" />
+    <circle cx="10" cy="35" r="1.2" fill="currentColor" />
+    <circle cx="10" cy="45" r="1.2" fill="currentColor" />
+    <circle cx="10" cy="55" r="1.2" fill="currentColor" />
+    <circle cx="10" cy="65" r="1.2" fill="currentColor" />
+    <circle cx="10" cy="75" r="1.2" fill="currentColor" />
+    <circle cx="90" cy="25" r="1.2" fill="currentColor" />
+    <circle cx="90" cy="35" r="1.2" fill="currentColor" />
+    <circle cx="90" cy="45" r="1.2" fill="currentColor" />
+    <circle cx="90" cy="55" r="1.2" fill="currentColor" />
+    <circle cx="90" cy="65" r="1.2" fill="currentColor" />
+    <circle cx="90" cy="75" r="1.2" fill="currentColor" />
+
+    <!-- Baroque corner scrolls -->
+    <g transform="translate(10,10)">
+      <path d="M-8 -8 C-8 0, 0 8, 8 8 C0 8, -8 0, -8 -8" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <path d="M8 -8 C8 0, 0 8, -8 8 C0 8, 8 0, 8 -8" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <circle cx="0" cy="0" r="1.8" fill="currentColor" />
+    </g>
+    <g transform="translate(90,10)">
+      <path d="M-8 -8 C-8 0, 0 8, 8 8 C0 8, -8 0, -8 -8" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <path d="M8 -8 C8 0, 0 8, -8 8 C0 8, 8 0, 8 -8" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <circle cx="0" cy="0" r="1.8" fill="currentColor" />
+    </g>
+    <g transform="translate(10,90)">
+      <path d="M-8 -8 C-8 0, 0 8, 8 8 C0 8, -8 0, -8 -8" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <path d="M8 -8 C8 0, 0 8, -8 8 C0 8, 8 0, 8 -8" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <circle cx="0" cy="0" r="1.8" fill="currentColor" />
+    </g>
+    <g transform="translate(90,90)">
+      <path d="M-8 -8 C-8 0, 0 8, 8 8 C0 8, -8 0, -8 -8" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <path d="M8 -8 C8 0, 0 8, -8 8 C0 8, 8 0, 8 -8" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <circle cx="0" cy="0" r="1.8" fill="currentColor" />
+    </g>
+
+    <!-- Side cartouches -->
+    <g transform="translate(50,10)">
+      <path d="M-8 0 C-8 -8, 8 -8, 8 0 C8 8, -8 8, -8 0" fill="none" stroke="currentColor" stroke-width="1.2" />
+      <path d="M-4 0 C-4 -4, 4 -4, 4 0 C4 4, -4 4, -4 0" fill="none" stroke="currentColor" stroke-width="1" />
+      <circle cx="0" cy="0" r="1.5" fill="currentColor" />
+    </g>
+    <g transform="translate(50,90)">
+      <path d="M-8 0 C-8 -8, 8 -8, 8 0 C8 8, -8 8, -8 0" fill="none" stroke="currentColor" stroke-width="1.2" />
+      <path d="M-4 0 C-4 -4, 4 -4, 4 0 C4 4, -4 4, -4 0" fill="none" stroke="currentColor" stroke-width="1" />
+      <circle cx="0" cy="0" r="1.5" fill="currentColor" />
+    </g>
+    <g transform="translate(10,50)">
+      <path d="M0 -8 C-8 -8, -8 8, 0 8 C8 8, 8 -8, 0 -8" fill="none" stroke="currentColor" stroke-width="1.2" />
+      <path d="M0 -4 C-4 -4, -4 4, 0 4 C4 4, 4 -4, 0 -4" fill="none" stroke="currentColor" stroke-width="1" />
+      <circle cx="0" cy="0" r="1.5" fill="currentColor" />
+    </g>
+    <g transform="translate(90,50)">
+      <path d="M0 -8 C-8 -8, -8 8, 0 8 C8 8, 8 -8, 0 -8" fill="none" stroke="currentColor" stroke-width="1.2" />
+      <path d="M0 -4 C-4 -4, -4 4, 0 4 C4 4, 4 -4, 0 -4" fill="none" stroke="currentColor" stroke-width="1" />
+      <circle cx="0" cy="0" r="1.5" fill="currentColor" />
+    </g>
+
+    <!-- Center letter -->
+    <text
+      x="50"
+      y="67"
+      text-anchor="middle"
+      font-family="'Computer Modern Serif', 'CMU Serif', 'Latin Modern Roman', Georgia, serif"
+      font-weight="700"
+      font-size="52"
+      fill="currentColor"
+    >
+      {safeLetter}
+    </text>
+  </svg>
+</span>

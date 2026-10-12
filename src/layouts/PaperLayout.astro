@@ -1,0 +1,80 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import DropCap from '../components/DropCap.astro';
+
+interface Props {
+  frontmatter: {
+    title: string;
+    authors: string[];
+    affiliation: string;
+    abstract: string;
+    keywords: string[];
+    date: Date;
+    volume: number;
+    issue: number;
+    pages: string;
+    doi?: string;
+    references: string[];
+  };
+}
+
+const { frontmatter } = Astro.props;
+const firstLetter = frontmatter.abstract ? frontmatter.abstract.trim().charAt(0) : '';
+const restAbstract = frontmatter.abstract ? frontmatter.abstract.trim().slice(1) : '';
+const dateStr = frontmatter.date.toLocaleDateString('en-US', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+---
+
+<BaseLayout title={frontmatter.title}>
+  <nav class="back-link">
+    <a href="/">← Contents</a>
+  </nav>
+
+  <div class="journal-head">
+    AI Research Notes · Vol. {frontmatter.volume}, No. {frontmatter.issue} · pp. {frontmatter.pages}
+  </div>
+
+  <h1 class="paper-title">{frontmatter.title}</h1>
+  <p class="paper-authors">{frontmatter.authors.join(', ')}</p>
+  <p class="paper-affil">{frontmatter.affiliation}</p>
+  <p class="paper-meta">
+    Published: {dateStr}
+    {frontmatter.doi && <> · DOI: <a href={`https://doi.org/${frontmatter.doi}`}>{frontmatter.doi}</a></>}
+  </p>
+
+  <div class="abstract">
+    <span class="abstract-label">Abstract</span>
+    <p class="abstract-text has-svg-dropcap">
+      <DropCap letter={firstLetter} />
+      {restAbstract}
+    </p>
+  </div>
+
+  {
+    frontmatter.keywords.length > 0 && (
+      <p class="keywords">
+        <strong>Keywords</strong> — {frontmatter.keywords.join(', ')}
+      </p>
+    )
+  }
+
+  <article class="paper-body">
+    <slot />
+  </article>
+
+  {
+    frontmatter.references.length > 0 && (
+      <section class="references">
+        <h2>References</h2>
+        <ol>
+          {frontmatter.references.map((ref) => (
+            <li set:html={ref} />
+          ))}
+        </ol>
+      </section>
+    )
+  }
+</BaseLayout>

@@ -1,0 +1,154 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const papers = (await getCollection('papers')).sort(
+  (a, b) => a.data.date.getTime() - b.data.date.getTime()
+);
+
+let pageStart = 1;
+const toc = papers.map((p) => {
+  const start = pageStart;
+  const end = parseInt(p.data.pages.split('–')[1] ?? '10', 10);
+  const count = Math.max(end - parseInt(p.data.pages.split('–')[0], 10) + 1, 1);
+  pageStart += count;
+  return { paper: p, start };
+});
+---
+
+<BaseLayout title="AI Research Notes — Contents">
+  <div class="journal-head">AI Research Notes · Vol. 1 · 2026</div>
+
+  <h1 class="paper-title">AI Research Notes</h1>
+  <p class="paper-authors">Ömer Faruk Aral</p>
+  <p class="author-contact">
+    <a href="mailto:omer@example.com">omer@example.com</a>
+  </p>
+  <p class="paper-affil">A Personal Collection of Research Notes on Artificial Intelligence</p>
+
+  <section class="toc">
+    <h2 class="toc-title">Contents</h2>
+    <ul class="toc-list">
+      {
+        toc.map(({ paper, start }) => (
+          <li class="toc-item">
+            <a href={`/papers/${paper.slug}`} class="toc-link">
+              <span class="toc-entry-title">{paper.data.title}</span>
+              <span class="toc-dots" aria-hidden="true" />
+              <span class="toc-page">{start}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section class="bio">
+    <h2 class="bio-title">About the Author</h2>
+    <div class="bio-body">
+      <p>
+        <strong>Ömer Faruk Aral</strong> is an independent researcher working
+        on artificial intelligence. His research interests include deep
+        learning architectures, large language models, and optimization
+        methods.
+      </p>
+      <p>
+        This collection brings together personal notes, experimental
+        findings, and method comparisons on recent literature in an academic
+        style.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .toc-title {
+    text-align: center;
+    font-variant: small-caps;
+    letter-spacing: 0.12em;
+    font-weight: 400;
+    font-size: 1.25rem;
+    margin: 2.5rem 0 1.8rem;
+  }
+
+  .toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .toc-item {
+    margin-bottom: 0.6rem;
+  }
+
+  .toc-link {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    color: var(--ink);
+    font-size: 1.05rem;
+  }
+
+  .toc-link:hover .toc-entry-title {
+    text-decoration: underline;
+  }
+
+  .toc-dots {
+    flex: 1;
+    border-bottom: 1px dotted #999;
+    transform: translateY(-3px);
+  }
+
+  .toc-page {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+  }
+
+  .author-contact {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    margin: -0.3rem 0 0.6rem;
+  }
+
+  .bio {
+    margin-top: 3.5rem;
+  }
+
+  .bio::before {
+    content: '⁂';
+    display: block;
+    text-align: center;
+    color: #aaa;
+    font-size: 1rem;
+    letter-spacing: 0.5em;
+    padding-left: 0.5em;
+    margin-bottom: 2rem;
+  }
+
+  .bio-title {
+    text-align: center;
+    font-variant: small-caps;
+    letter-spacing: 0.12em;
+    font-weight: 400;
+    font-size: 1.15rem;
+    margin-bottom: 1.4rem;
+  }
+
+  .bio-body {
+    font-size: 0.92rem;
+    text-align: justify;
+    color: var(--ink-soft);
+  }
+
+  .bio-body p {
+    text-indent: 1.5em;
+    margin: 0 0 0.8rem;
+  }
+
+  .bio-contact {
+    text-indent: 0;
+    margin-top: 1rem;
+    font-size: 0.88rem;
+  }
+</style>
