@@ -1,0 +1,59 @@
+---
+title: 'Jev-chess small: A 6.5M-Parameter Single-Pass Chess Policy'
+authors:
+  - 'Ömer Faruk Aral'
+affiliation: 'Independent Researcher'
+abstract: 'We train a 6.5M-parameter transformer that maps a chess position to a calibrated probability distribution over its legal moves in a single parallel forward pass, with no search. Trained on 5,000,000 Lichess positions labeled with Stockfish best moves, it reaches 36.5% held-out top-1 accuracy, an expected calibration error of 0.036, and an estimated 1239 ± 51 Elo. The model runs entirely in the reader''s browser.'
+keywords: ['chess', 'policy network', 'transformer', 'calibration']
+date: 2026-10-12
+volume: 1
+issue: 1
+pages: '25–32'
+references:
+  - 'Lichess, "chess-position-evaluations," <em>Hugging Face Datasets</em>, <a href="https://huggingface.co/datasets/Lichess/chess-position-evaluations">Lichess/chess-position-evaluations</a>.'
+  - 'Ö. F. Aral, "jev-chess-1-small-6.5M," <em>Hugging Face</em>, <a href="https://huggingface.co/omerfaral/jev-chess-1-small-6.5M">omerfaral/jev-chess-1-small-6.5M</a>.'
+---
+
+import ChessDemo from '../../components/ChessDemo.astro';
+
+## Introduction
+
+Most chess engines pair an evaluation with a deep search. This note asks a narrower question: how well does a small network play when it only gets one look at the board? Jev-chess small reads the position once and returns a probability for every legal move. It plays the most likely one.
+
+The design follows the public description of Jev: a discriminative transformer that makes a single-pass *Choice* over at most 255 options. Chess has at most 218 legal moves, so the choice always fits. Jev's internals are unpublished. This is an independent model, not their weights.
+
+## Model
+
+The board is always encoded from the side to move. Black positions are mirrored. The input is 65 tokens: one for each of the 64 squares (empty, or one of 12 piece kinds) and one meta token that holds the four castling rights and the en-passant file.
+
+An 8-layer encoder ($d = 256$, 8 heads) processes the tokens. A bilinear head scores every from–to pair:
+
+$$
+s_{ij} = \frac{(W_q h_i)^\top (W_k h_j)}{\sqrt{d}}
+$$
+
+Underpromotions get 24 extra slots read off the from-square, for 4,168 move logits in total. A softmax over only the legal moves gives the policy.
+
+## Results
+
+| Metric | Value |
+| ------ | ----- |
+| Parameters | 6.5M |
+| Training | 30,000 steps, 5M positions [1] |
+| Held-out top-1 | 36.5% |
+| Calibration ECE | 0.036 |
+| Elo (CCRL scale) | 1239 ± 51 |
+
+Elo was estimated from 200 games against Stockfish limited to `UCI_Elo` 1320 and 1400, at 60s+0.6s. Because there is no search, the time control does not matter to Jev.
+
+## Interactive Demonstration
+
+Figure 1 runs the exported ONNX model with ONNX Runtime Web. No server is involved: every move below is computed on your machine. The weights are the same as the published release [2].
+
+<ChessDemo />
+
+The low calibration error means the probabilities in Table 1 can be read at face value. A move shown with $p \approx 0.9$ matches Stockfish's choice about nine times in ten. A flat distribution marks a position the model finds genuinely unclear.
+
+## Conclusion
+
+A single forward pass with 6.5M parameters reaches roughly 1240 Elo with well-calibrated move probabilities. Search is the obvious next step, and the calibrated policy is a natural prior for it.

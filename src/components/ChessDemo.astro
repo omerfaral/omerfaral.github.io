@@ -1,0 +1,343 @@
+---
+// Play against Jev-chess small in the browser. Board drawn like an old chess-book diagram:
+// hatched dark squares, double-ruled frame, figurine glyphs with a paper-white halo.
+---
+
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Noto+Sans+Symbols+2&display=block&text=%E2%99%94%E2%99%95%E2%99%96%E2%99%97%E2%99%98%E2%99%99%E2%99%9A%E2%99%9B%E2%99%9C%E2%99%9D%E2%99%9E%E2%99%9F"
+/>
+
+<figure class="jev-demo">
+  <div class="jev-diagram">
+    <div class="jev-ranks" aria-hidden="true"></div>
+    <div class="jev-board" role="grid" aria-label="Chess board"></div>
+    <div class="jev-files" aria-hidden="true"></div>
+  </div>
+
+  <div class="jev-controls">
+    <button type="button" class="jev-new">New game</button>
+    <button type="button" class="jev-side">Play as Black</button>
+  </div>
+  <p class="jev-status" aria-live="polite">The model loads when this figure scrolls into view (≈40 MB).</p>
+  <p class="jev-moves"></p>
+
+  <table class="jev-dist" hidden>
+    <caption></caption>
+    <thead>
+      <tr><th>Rank</th><th>Move</th><th>p</th><th></th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <figcaption>
+    <strong>Figure 1.</strong> Jev-chess small playing in your browser. Every reply is the arg-max of a single
+    forward pass. There is no search. The table lists the policy at the current position.
+  </figcaption>
+</figure>
+
+<script>
+  import * as ort from 'onnxruntime-web/wasm';
+  import wasmUrl from 'onnxruntime-web/ort-wasm-simd-threaded.wasm?url';
+  import { Chess } from 'chess.js';
+  import { predict } from '../lib/jev.js';
+
+  ort.env.wasm.wasmPaths = { wasm: wasmUrl };
+  ort.env.wasm.numThreads = 1; // GitHub Pages can't send COOP/COEP headers, so no SharedArrayBuffer threads
+
+  const GLYPH = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' }; // filled
+  const OUTLINE = { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' };
+  const NAME = { k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn' };
+  const FILES = 'abcdefgh';
+
+  const root = document.querySelector('.jev-demo');
+  const $ = (s) => root.querySelector(s);
+  const boardEl = $('.jev-board'), statusEl = $('.jev-status'), movesEl = $('.jev-moves'), table = $('.jev-dist');
+
+  let game = new Chess();
+  let human = 'w';
+  let selected = null;
+  let lastMove = null;
+  let busy = true;
+  let session = null;
+
+  const status = (t) => (statusEl.textContent = t);
+  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function render() {
+    const ranks = human === 'w' ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
+    const files = human === 'w' ? [...FILES] : [...FILES].reverse();
+    const targets = selected ? game.moves({ square: selected, verbose: true }).map((m) => m.to) : [];
+    let html = '';
+    for (const r of ranks)
+      for (const f of files) {
+        const sq = f + r;
+        const p = game.get(sq);
+        const dark = (FILES.indexOf(f) + r) % 2 === 1 ? ' dark' : ''; // a1 is dark
+        const cls = 'sq' + dark + (sq === selected ? ' sel' : '') + (targets.includes(sq) ? ' tgt' : '') +
+          (lastMove && (sq === lastMove.from || sq === lastMove.to) ? ' last' : '');
+        const label = p ? `${sq}, ${p.color === 'w' ? 'white' : 'black'} ${NAME[p.type]}` : sq;
+        const piece = p
+          ? `<span class="halo">${GLYPH[p.type]}</span><span class="glyph">${(p.color === 'w' ? OUTLINE : GLYPH)[p.type]}</span>`
+          : '';
+        html += `<button type="button" class="${cls}" data-sq="${sq}" aria-label="${label}">${piece}</button>`;
+      }
+    boardEl.innerHTML = html;
+    $('.jev-ranks').innerHTML = ranks.map((r) => `<span>${r}</span>`).join('');
+    $('.jev-files').innerHTML = files.map((f) => `<span>${f}</span>`).join('');
+
+    const h = game.history();
+    movesEl.textContent = h.map((m, i) => (i % 2 ? m : `${i / 2 + 1}. ${m}`)).join(' ');
+  }
+
+  function renderDist(dist) {
+    if (!dist.length) return (table.hidden = true);
+    const side = game.turn() === 'w' ? 'White' : 'Black';
+    table.querySelector('caption').textContent =
+      `Table 1. Policy at the current position, ${side} to move: top ${Math.min(5, dist.length)} of ${dist.length} legal moves.`;
+    table.querySelector('tbody').innerHTML = dist.slice(0, 5).map(({ move, p }, i) =>
+      `<tr><td>${i + 1}</td><td>${move.san}</td><td>${p.toFixed(3)}</td>` +
+      `<td><span class="bar" style="width:${(p * 100).toFixed(1)}%"></span></td></tr>`).join('');
+    table.hidden = false;
+  }
+
+  function overText() {
+    if (game.isCheckmate()) return game.turn() === human ? 'Checkmate. Jev wins.' : 'Checkmate. You win.';
+    if (game.isStalemate()) return 'Draw by stalemate.';
+    if (game.isThreefoldRepetition()) return 'Draw by threefold repetition.';
+    if (game.isInsufficientMaterial()) return 'Draw by insufficient material.';
+    return 'Draw by the fifty-move rule.';
+  }
+
+  // Shows the policy for the current position; if it is Jev's turn, plays its top move.
+  async function step() {
+    busy = true;
+    render();
+    if (game.isGameOver()) {
+      renderDist([]);
+      status(overText());
+      busy = false;
+      return;
+    }
+    const jevTurn = game.turn() !== human;
+    if (jevTurn) status('Jev is choosing a move…');
+    const dist = await predict(ort, session, game);
+    renderDist(dist);
+    if (jevTurn) {
+      await pause(300); // let the reader see the human's move land first
+      lastMove = game.move(dist[0].move.san);
+      return step();
+    }
+    status(game.inCheck() ? 'Check. Your move.' : `Your move (${human === 'w' ? 'White' : 'Black'}).`);
+    busy = false;
+  }
+
+  boardEl.addEventListener('click', (e) => {
+    const sq = e.target.closest('.sq')?.dataset.sq;
+    if (!sq || busy || game.turn() !== human) return;
+    const legal = selected && game.moves({ square: selected, verbose: true }).find((m) => m.to === sq);
+    if (legal) {
+      // ponytail: always promotes to a queen; add a picker if underpromotion matters
+      lastMove = game.move({ from: selected, to: sq, promotion: 'q' });
+      selected = null;
+      return step();
+    }
+    selected = game.get(sq)?.color === human && sq !== selected ? sq : null;
+    render();
+  });
+
+  function newGame() {
+    if (!session) return;
+    game = new Chess();
+    selected = lastMove = null;
+    step();
+  }
+  $('.jev-new').addEventListener('click', newGame);
+  $('.jev-side').addEventListener('click', (e) => {
+    human = human === 'w' ? 'b' : 'w';
+    e.target.textContent = human === 'w' ? 'Play as Black' : 'Play as White';
+    newGame();
+  });
+
+  render();
+
+  // Load the model only once the figure is near the viewport: model + runtime are ~40 MB.
+  new IntersectionObserver(async (entries, obs) => {
+    if (!entries.some((e) => e.isIntersecting)) return;
+    obs.disconnect();
+    status('Loading model…');
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+      session = await ort.InferenceSession.create(`${base}jev/model.onnx`, { executionProviders: ['wasm'] });
+      step();
+    } catch (err) {
+      status(`Could not load the model: ${err.message}`);
+    }
+  }, { rootMargin: '300px' }).observe(root);
+</script>
+
+<style is:global>
+  .jev-demo {
+    --sq-hatch: repeating-linear-gradient(45deg, var(--ink) 0 0.8px, transparent 0.8px 3.6px);
+    margin: 2rem auto;
+    max-width: 440px;
+    hyphens: manual;
+  }
+
+  .jev-diagram {
+    display: grid;
+    grid-template-columns: 1.7em 1fr;
+    grid-template-areas: 'ranks board' '. files';
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .jev-ranks {
+    grid-area: ranks;
+    display: grid;
+    grid-template-rows: repeat(8, 1fr);
+    align-items: center;
+  }
+
+  .jev-files {
+    grid-area: files;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    text-align: center;
+    margin-top: 0.45rem;
+  }
+
+  /* Double rule: thick inner frame, thin outer line, like a book diagram. */
+  .jev-board {
+    grid-area: board;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    aspect-ratio: 1;
+    border: 2.5px solid var(--ink);
+    box-shadow: 0 0 0 3px #fff, 0 0 0 4px var(--ink);
+    container-type: inline-size;
+    background: #fff;
+  }
+
+  .jev-demo .sq {
+    all: unset;
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    cursor: pointer;
+    font-family: 'Noto Sans Symbols 2', 'DejaVu Sans', 'Segoe UI Symbol', serif;
+    font-size: 10cqi;
+    line-height: 1;
+  }
+
+  .jev-demo .sq.dark {
+    background: var(--sq-hatch);
+  }
+
+  .jev-demo .sq > span {
+    grid-area: 1 / 1;
+    font-style: normal;
+  }
+
+  /* White silhouette under every piece so hatching never shows through it. */
+  .jev-demo .halo {
+    color: #fff;
+    -webkit-text-stroke: 0.14em #fff;
+    paint-order: stroke fill;
+  }
+
+  .jev-demo .glyph {
+    color: var(--ink);
+  }
+
+  .jev-demo .sq.last {
+    box-shadow: inset 0 0 0 2px rgba(122, 31, 31, 0.35);
+  }
+
+  .jev-demo .sq.sel {
+    box-shadow: inset 0 0 0 2.5px var(--accent);
+  }
+
+  .jev-demo .sq.tgt::after {
+    content: '';
+    position: absolute;
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid #fff;
+    opacity: 0.85;
+  }
+
+  .jev-demo .sq:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -4px;
+  }
+
+  .jev-controls {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 1.4rem;
+  }
+
+  .jev-controls button {
+    font-family: var(--serif);
+    font-size: 0.85rem;
+    font-variant: small-caps;
+    letter-spacing: 0.05em;
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+    padding: 0.25rem 0.9rem;
+    cursor: pointer;
+  }
+
+  .jev-controls button:hover {
+    background: #f4f2ec;
+  }
+
+  .jev-demo .jev-status {
+    text-align: center;
+    font-style: italic;
+    font-size: 0.9rem;
+    margin: 0.8rem 0 0.2rem;
+    text-indent: 0;
+  }
+
+  .jev-demo .jev-moves {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    text-align: center;
+    text-indent: 0;
+    min-height: 1.2em;
+    margin: 0.3rem 0 0;
+  }
+
+  .jev-dist {
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .jev-dist td:nth-child(2),
+  .jev-dist td:nth-child(3) {
+    font-family: var(--mono);
+    font-size: 0.85em;
+  }
+
+  .jev-dist td:last-child {
+    width: 40%;
+  }
+
+  .jev-dist .bar {
+    display: block;
+    height: 0.7em;
+    border: 1px solid var(--ink);
+    background: var(--sq-hatch);
+    min-width: 1px;
+  }
+</style>

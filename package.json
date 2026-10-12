@@ -9,8 +9,11 @@
     "preview": "astro preview"
   },
   "dependencies": {
+    "@astrojs/mdx": "^3.1.9",
     "astro": "^4.16.0",
+    "chess.js": "^1.4.0",
     "katex": "^0.16.11",
+    "onnxruntime-web": "^1.30.0",
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0"
   }
